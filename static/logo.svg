@@ -1,0 +1,5 @@
+<svg width="320" height="100" viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Highly stylized two-tone wordmark (closer spacing -15px) -->
+  <text x="10" y="70" font-family="Montserrat, Segoe UI, sans-serif" font-size="64" font-weight="800" fill="#3498db" letter-spacing="-3">Go</text>
+  <text x="105" y="70" font-family="Montserrat, Segoe UI, sans-serif" font-size="60" font-weight="700" fill="#2c3e50" letter-spacing="-2">VPNUI</text>
+</svg>
