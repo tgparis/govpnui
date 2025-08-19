@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GoVPNUI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* ===== Base page style ===== */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #2c3e50, #3498db);
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; margin: 0;
+    }
+    .portal {
+      background: #fff; padding: 2rem 2.25rem; border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      width: min(1200px, calc(100vw - 32px));
+    }
+    .header { text-align: center; margin-bottom: 1.25rem; }
+    .logo { max-width: 180px; margin: 0 auto 1rem; display: block; }
+    h2 { margin: 0.25rem 0 0.5rem; color: #2c3e50; }
+    .subtle { color: #6b7280; font-size: 0.95rem; }
+
+    /* Controls */
+    label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    input[type="text"], select, button {
+      font-family: inherit; font-size: 15px; border-radius: 6px;
+      border: 1px solid #cbd5e1; box-sizing: border-box;
+    }
+    input[type="text"], select { width: 100%; padding: 0.7rem 0.8rem; margin-bottom: 0.9rem; }
+    input[type="text"]:focus, select:focus {
+      outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15);
+    }
+    .btn { display: inline-block; padding: 0.6rem 0.9rem; border: 1px solid transparent;
+      border-radius: 6px; cursor: pointer; font-weight: 600; transition: transform 0.02s ease-in-out; user-select: none; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: #3498db; color: #fff; border-color: #3498db; }
+    .btn-primary:hover { background: #2980b9; border-color: #2980b9; }
+    .btn-neutral { background: #f1f5f9; color: #111827; border-color: #e5e7eb; }
+    .btn-neutral:hover { background: #e5e7eb; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .grow { flex: 1 1 auto; min-width: 240px; }
+
+    /* Cards & groups */
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; background: #ffffff; }
+    .muted { color: #6b7280; font-size: 0.9rem; }
+    .group { margin-bottom: 14px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+
+    /* Colored parent group header */
+    .group-header {
+      display: flex; align-items: center; gap: 10px; user-select: none; cursor: pointer;
+      padding: 12px 14px;
+      color: #0f172a;
+      background: linear-gradient(90deg, #f1f8ff 0%, #e7f3ff 60%, #e7f3ff 100%);
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .group-header .pill {
+      background: #3498db; color: #fff; font-weight: 700; font-size: 12px;
+      padding: 4px 8px; border-radius: 999px;
+    }
+    .group-body { padding: 0; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; background: #fff; table-layout: fixed; }
+    /* Shared column widths for alignment across groups */
+    col.col-ind { width: 40px; }
+    col.col-child { width: 280px; }
+    col.col-status { width: auto; }   /* flexes */
+    col.col-actions { width: 220px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    th { color: #2c3e50; font-size: 14px; background: #fafafa; }
+    tr.detail-row td { background: #fbfdff; white-space: normal; }
+    td.actions { white-space: nowrap; }
+
+    /* Status indicators */
+    .indicator {
+      display: inline-block; width: 12px; height: 12px; border-radius: 999px; margin-right: 8px;
+    }
+    .up   { background: #16a34a; box-shadow: 0 0 0 2px rgba(22,163,74,0.15); }
+    .down { background: #9ca3af; box-shadow: 0 0 0 2px rgba(156,163,175,0.15); } /* gray, no blink */
+
+    .legend { display: flex; gap: 16px; align-items: center; margin: 8px 0 0; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: #6b7280; }
+
+    /* Carets */
+    .caret {
+      display: inline-block; width: 0; height: 0; margin-right: 8px;
+      border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+      border-left: 6px solid #6b7280; transition: transform 0.15s ease;
+      vertical-align: middle;
+    }
+    .caret.open { transform: rotate(90deg); }
+    .expand-btn { background: transparent; border: none; cursor: pointer; padding: 0; margin-right: 6px; }
+    .expand-btn:focus { outline: none; }
+
+    .kv { display: grid; grid-template-columns: 180px 1fr; gap: 6px 12px; font-size: 0.95rem; }
+    .kv div { padding: 2px 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="portal">
+    <div class="header">
+      <img src="logo.svg" alt="Company Logo" class="logo" onerror="this.style.display='none'">
+      <h2>GoVPNUI Portal</h2>
+      <div class="subtle">Initiate / terminate tunnels and view live status</div>
+    </div>
+
+    <!-- Controls (no "Controls" heading) -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="row">
+        <div class="grow">
+          <label for="search">Search (parent or child)</label>
+          <input id="search" type="text" placeholder="parent/child name" oninput="applySearch()"/>
+        </div>
+        <div>
+          <label class="subtle">Auto refresh</label>
+          <select id="autorefresh" onchange="setAutorefresh(this.value)">
+            <option value="0">Off</option>
+            <option value="5">5s</option>
+            <option value="10" selected>10s</option>
+            <option value="30">30s</option>
+          </select>
+        </div>
+        <div>
+          <label class="subtle">&nbsp;</label>
+          <button class="btn btn-neutral" onclick="refreshAll()">Refresh</button>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <label class="subtle">&nbsp;</label>
+          <button class="btn btn-primary" onclick="expandAll()">Expand all</button>
+          <button class="btn btn-neutral" onclick="collapseAll()">Collapse all</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="indicator up"></span>Active</span>
+        <span><span class="indicator down"></span>Inactive</span>
+      </div>
+    </div>
+
+    <!-- Groups render here -->
+    <div id="groups"></div>
+
+    <div class="subtle" style="text-align:center; margin-top:12px;">
+      &copy; 2025 
+    </div>
+  </div>
+
+  <script>
+    let refreshTimer = null;
+    let lastStatusJSON = {};     // child -> {active, bytes, pkts}
+    let activeChildren = [];     // ["child-a", ...]
+    let statusTextCache = "";    // raw --list-sas text for detail parsing
+    let expanded = new Set();    // which child rows are open
+    let collapsedParents = new Set(); // which parent groups are collapsed
+    let allChildren = [];        // cache of all child names from /children_json
+    let searchTerm = "";         // normalized search term
+
+    const $ = (id) => document.getElementById(id);
+
+    function setAutorefresh(sec) {
+      if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+      const s = parseInt(sec, 10);
+      if (s > 0) refreshTimer = setInterval(refreshAll, s * 1000);
+    }
+
+    function applySearch() {
+      searchTerm = ($('search').value || "").trim().toLowerCase();
+      renderGroups(allChildren);
+    }
+
+    async function fetchJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+    async function fetchText(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      return res.text();
+    }
+
+    async function fetchChildren() { return fetchJSON('/children_json'); }
+    async function refreshActiveChildren() {
+      try { activeChildren = await fetchJSON('/active_children_json'); }
+      catch (e) { activeChildren = []; console.error('active_children_json error:', e); }
+    }
+    async function refreshStatusJSON() {
+      try { lastStatusJSON = await fetchJSON('/status_json'); }
+      catch (e) { lastStatusJSON = {}; console.error('status_json error:', e); }
+    }
+    async function refreshStatusText() {
+      try { statusTextCache = await fetchText('/status_txt'); }
+      catch (e) { statusTextCache = ""; console.error('status_txt error:', e); }
+    }
+
+    async function initiate(name) {
+      try {
+        const res = await fetch(`/initiate?name=${encodeURIComponent(name)}`, { method: 'POST' });
+        if (!res.ok) throw new Error(await res.text());
+      } catch (e) { alert(`Initiate failed: ${e.message}`); }
+      refreshAll();
+    }
+    async function terminate(name) {
+      try {
+        const res = await fetch(`/terminate?name=${encodeURIComponent(name)}`, { method: 'POST' });
+        if (!res.ok) throw new Error(await res.text());
+      } catch (e) { alert(`Terminate failed: ${e.message}`); }
+      refreshAll();
+    }
+
+    function fmtBytes(n) {
+      n = Number(n || 0);
+      const units = ['B','KB','MB','GB','TB'];
+      let i = 0;
+      while (n >= 1024 && i < units.length-1) { n /= 1024; i++; }
+      return (i === 0 ? n : n.toFixed(1)) + ' ' + units[i];
+    }
+
+    function parentOf(child) {
+      const i = child.lastIndexOf('-');
+      return i > 0 ? child.slice(0, i) : child;
+    }
+
+    function groupChildren(children) {
+      const groups = {};
+      for (const c of children) {
+        const p = parentOf(c);
+        if (!groups[p]) groups[p] = [];
+        groups[p].push(c);
+      }
+      for (const g in groups) groups[g].sort((a,b)=>a.localeCompare(b));
+      const orderedParents = Object.keys(groups).sort((a,b)=>a.localeCompare(b));
+      return { groups, orderedParents };
+    }
+
+    function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    function parseChildDetails(child) {
+      const lines = statusTextCache.split('\n');
+      const headerRe = new RegExp(`^\\s*${escapeRegex(child)}:\\s*#\\d+,.*\\bESP:`, 'i');
+      const braceHeaderRe = new RegExp(`^\\s*${escapeRegex(child)}\\{\\d+\\}:`, 'i'); // fallback
+      let i = -1;
+      for (let idx=0; idx<lines.length; idx++) {
+        const L = lines[idx];
+        if (headerRe.test(L) || braceHeaderRe.test(L)) { i = idx; break; }
+      }
+      if (i === -1) return null;
+
+      const block = [];
+      for (let j=i; j<lines.length; j++) {
+        const L = lines[j];
+        if (j>i && (/^\S/.test(L) || /^\s*\w.+: #\d+/.test(L) || /^\s*[A-Za-z0-9._:-]+\{/.test(L))) break;
+        block.push(L);
+      }
+
+      const detail = {
+        child,
+        header: block[0] || '',
+        in_bytes: null, in_pkts: null,
+        out_bytes: null, out_pkts: null,
+        local: null, remote: null,
+        encryption: null, timing: null
+      };
+
+      const mEnc = /ESP:([A-Za-z0-9_\-\/+]+(?:,[A-Za-z0-9_\-\/+]+)*)/i.exec(detail.header);
+      if (mEnc) detail.encryption = mEnc[1];
+
+      for (const L of block) {
+        if (/installed\b.*\brekeying\b.*\bexpires\b/i.test(L)) {
+          detail.timing = L.trim(); break;
+        }
+      }
+
+      for (const L of block) {
+        const mLoc = /^\s*local\s+(.*)$/i.exec(L);
+        const mRem = /^\s*remote\s+(.*)$/i.exec(L);
+        if (mLoc) detail.local = mLoc[1].trim();
+        if (mRem) detail.remote = mRem[1].trim();
+      }
+
+      for (const L of block) {
+        let m;
+        if ((m = /^\s*in\s+[0-9A-Fa-fx]+,\s*([\d,]+)\s*bytes,\s*([\d,]+)\s*packets/i.exec(L))) {
+          detail.in_bytes = Number(m[1].replace(/,/g,'')); detail.in_pkts = Number(m[2].replace(/,/g,''));
+        }
+        if ((m = /^\s*out\s+[0-9A-Fa-fx]+,\s*([\d,]+)\s*bytes,\s*([\d,]+)\s*packets/i.exec(L))) {
+          detail.out_bytes = Number(m[1].replace(/,/g,'')); detail.out_pkts = Number(m[2].replace(/,/g,''));
+        }
+      }
+      return detail;
+    }
+
+    function renderGroups(children) {
+      const container = $('groups');
+      container.innerHTML = '';
+
+      if (!children.length) {
+        container.innerHTML = '<div class="card"><div class="muted">No children detected.</div></div>';
+        return;
+      }
+
+      // Filter by search
+      const needle = searchTerm;
+      const filtered = needle
+        ? children.filter(c => c.toLowerCase().includes(needle) || parentOf(c).toLowerCase().includes(needle))
+        : children;
+
+      const { groups, orderedParents } = groupChildren(filtered);
+
+      for (const parent of orderedParents) {
+        const kids = groups[parent];
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'group';
+
+        // Header with collapse toggle (colored)
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'group-header';
+        const caret = document.createElement('span');
+        caret.className = 'caret ' + (collapsedParents.has(parent) ? '' : 'open');
+        const title = document.createElement('span');
+        title.style.fontSize = '16px';
+        title.textContent = parent;
+        const count = document.createElement('span');
+        count.className = 'pill';
+        count.textContent = kids.length;
+
+        headerDiv.appendChild(caret);
+        headerDiv.appendChild(title);
+        headerDiv.appendChild(count);
+        headerDiv.onclick = () => {
+          if (collapsedParents.has(parent)) collapsedParents.delete(parent);
+          else collapsedParents.add(parent);
+          renderGroups(children); // re-render keeps state
+        };
+        groupDiv.appendChild(headerDiv);
+
+        // Body (collapsible)
+        const bodyDiv = document.createElement('div');
+        bodyDiv.className = 'group-body';
+        bodyDiv.style.display = collapsedParents.has(parent) ? 'none' : '';
+
+        // Table for this parent; columns align via shared colgroup
+        const table = document.createElement('table');
+        table.innerHTML = `
+          <colgroup>
+            <col class="col-ind">
+            <col class="col-child">
+            <col class="col-status">
+            <col class="col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Child</th>
+              <th>Status</th>
+              <th class="actions">Actions</th>
+            </tr>
+          </thead>
+        `;
+        const tbody = document.createElement('tbody');
+
+        for (const n of kids) {
+          const st = lastStatusJSON[n] || null;
+          const isUp = st ? !!st.active : activeChildren.includes(n);
+
+          // main row
+          const tr = document.createElement('tr');
+
+          const tdDot = document.createElement('td');
+          const dot = document.createElement('span');
+          dot.className = `indicator ${isUp ? 'up' : 'down'}`;
+          tdDot.appendChild(dot);
+
+          const tdName = document.createElement('td');
+          const btn = document.createElement('button');
+          btn.className = 'expand-btn';
+          btn.title = 'Show details';
+          btn.innerHTML = `<span class="caret ${expanded.has(n) ? 'open' : ''}"></span>`;
+          btn.onclick = () => toggleDetails(n);
+          tdName.appendChild(btn);
+          const nameText = document.createElement('span');
+          nameText.textContent = n;
+          tdName.appendChild(nameText);
+
+          const tdStatus = document.createElement('td');
+          if (isUp && st) {
+            tdStatus.textContent = `Active — in ${fmtBytes(st.in_bytes)} / out ${fmtBytes(st.out_bytes)} (${st.in_pkts}↘︎ / ${st.out_pkts}↗︎ pkts)`;
+          } else if (isUp && !st) {
+            tdStatus.textContent = 'Active';
+          } else {
+            tdStatus.textContent = 'Inactive';
+          }
+
+          const tdActions = document.createElement('td');
+          tdActions.className = 'actions';
+          tdActions.innerHTML = `
+            <button class="btn btn-primary" onclick="initiate('${n}')">Initiate</button>
+            <button class="btn btn-neutral" onclick="terminate('${n}')">Terminate</button>
+          `;
+
+          tr.appendChild(tdDot);
+          tr.appendChild(tdName);
+          tr.appendChild(tdStatus);
+          tr.appendChild(tdActions);
+          tbody.appendChild(tr);
+
+          // detail row
+          const detTr = document.createElement('tr');
+          detTr.className = 'detail-row';
+          detTr.id = `detail-${n}`;
+          detTr.style.display = expanded.has(n) ? '' : 'none';
+          const detTd = document.createElement('td');
+          detTd.colSpan = 4;
+
+          const details = parseChildDetails(n);
+          if (details) {
+            detTd.innerHTML = `
+              <div class="kv">
+                <div><strong>Encryption</strong></div><div>${details.encryption ? `<code>${details.encryption}</code>` : '<span class="muted">—</span>'}</div>
+                <div><strong>Local</strong></div><div>${details.local ? `<code>${escapeHtml(details.local)}</code>` : '<span class="muted">—</span>'}</div>
+                <div><strong>Remote</strong></div><div>${details.remote ? `<code>${escapeHtml(details.remote)}</code>` : '<span class="muted">—</span>'}</div>
+                <div><strong>Timing</strong></div><div>${details.timing ? `<code>${escapeHtml(details.timing)}</code>` : '<span class="muted">—</span>'}</div>
+                <div><strong>TX/RX</strong></div><div>${
+                  (details.in_bytes!=null || details.out_bytes!=null)
+                    ? `in ${fmtBytes(details.in_bytes||0)} / out ${fmtBytes(details.out_bytes||0)} (${details.in_pkts||0}↘︎ / ${details.out_pkts||0}↗︎ pkts)`
+                    : '<span class="muted">—</span>'
+                }</div>
+              </div>
+            `;
+          } else {
+            detTd.innerHTML = `<div class="muted">No additional details found for <code>${n}</code>.</div>`;
+          }
+
+          detTr.appendChild(detTd);
+          tbody.appendChild(detTr);
+        }
+
+        table.appendChild(tbody);
+        bodyDiv.appendChild(table);
+        groupDiv.appendChild(bodyDiv);
+        container.appendChild(groupDiv);
+      }
+      updateAllCarets();
+    }
+
+    function toggleDetails(child) {
+      const id = `detail-${child}`;
+      const row = document.getElementById(id);
+      if (!row) return;
+      const isOpen = row.style.display !== 'none';
+      if (isOpen) {
+        row.style.display = 'none';
+        expanded.delete(child);
+      } else {
+        row.style.display = '';
+        expanded.add(child);
+      }
+      updateCaret(child);
+    }
+
+    function updateCaret(child) {
+      const detail = document.getElementById(`detail-${child}`);
+      const isOpen = detail && detail.style.display !== 'none';
+      document.querySelectorAll('.expand-btn').forEach(btn => {
+        const sib = btn.nextSibling;
+        if (sib && sib.nodeType === Node.TEXT_NODE) {
+          const name = sib.textContent.trim();
+          if (name === child) {
+            const caret = btn.querySelector('.caret');
+            if (caret) caret.classList.toggle('open', isOpen);
+          }
+        }
+      });
+    }
+
+    function updateAllCarets() {
+      document.querySelectorAll('.expand-btn').forEach(btn => {
+        const sib = btn.nextSibling;
+        const name = (sib && sib.nodeType === Node.TEXT_NODE) ? sib.textContent.trim() : '';
+        const isOpen = expanded.has(name);
+        const caret = btn.querySelector('.caret');
+        if (caret) caret.classList.toggle('open', isOpen);
+      });
+    }
+
+    function expandAll() {
+      // Expand all parents and all child detail rows
+      collapsedParents.clear();
+      allChildren.forEach(c => expanded.add(c));
+      renderGroups(allChildren);
+    }
+
+    function collapseAll() {
+      // Collapse all parents and close all child detail rows
+      // (We preserve expanded set in case you want to keep it; but we can also clear it.)
+      collapsedParents = new Set(Object.keys(groupChildren(allChildren).groups));
+      expanded.clear();
+      renderGroups(allChildren);
+    }
+
+    async function refreshAll() {
+      const [children] = await Promise.all([
+        fetchChildren(),
+        refreshActiveChildren(),
+        refreshStatusJSON(),
+        refreshStatusText()
+      ]);
+      allChildren = children;
+      renderGroups(allChildren);
+    }
+
+    // Initial load
+    refreshAll();
+    setAutorefresh(10);
+  </script>
+</body>
+</html>
